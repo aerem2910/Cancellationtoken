@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -31,10 +31,11 @@ internal class Server
 
                 try
                 {
-                    receiveResult = await udpClient.ReceiveAsync();
+                    receiveResult = await ReceiveWithCancellationAsync(udpClient, cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
+                    // Ignore the exception when cancellation is requested.
                     break;
                 }
 
@@ -58,8 +59,23 @@ internal class Server
         finally
         {
             udpClient.Close();
-            
+            // Дожидаемся завершения задачи по нажатию клавиши
             await exitTask;
+        }
+    }
+
+    private static async Task<UdpReceiveResult> ReceiveWithCancellationAsync(UdpClient udpClient, CancellationToken cancellationToken)
+    {
+        var receiveTask = udpClient.ReceiveAsync();
+        var completedTask = await Task.WhenAny(receiveTask, Task.Delay(-1, cancellationToken));
+
+        if (completedTask == receiveTask)
+        {
+            return await receiveTask;
+        }
+        else
+        {
+            throw new OperationCanceledException(cancellationToken);
         }
     }
 
