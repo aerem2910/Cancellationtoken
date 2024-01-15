@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -28,19 +28,18 @@ internal class Client
 
                 await udpClient.SendAsync(responseData, responseData.Length, ep);
 
-                var receiveTask = udpClient.ReceiveAsync();
+                Task<UdpReceiveResult> receiveTask = udpClient.ReceiveAsync();
 
-                if (await Task.WhenAny(receiveTask, Task.Delay(Timeout.Infinite, cancellationToken)) == receiveTask)
-                {
-                    byte[] answerData = receiveTask.Result.Buffer;
-                    string answerMsgJs = Encoding.UTF8.GetString(answerData);
-                    Message answerMsg = Message.FromJson(answerMsgJs);
-                    Console.WriteLine(answerMsg.ToString());
-                }
-                else
-                {
-                    throw new OperationCanceledException(cancellationToken);
-                }
+                // Дожидаемся завершения операции или получения токена отмены
+                await Task.WhenAny(receiveTask, Task.Delay(Timeout.Infinite, cancellationToken));
+
+                // Проверяем, была ли отменена операция
+                cancellationToken.ThrowIfCancellationRequested();
+
+                byte[] answerData = receiveTask.Result.Buffer;
+                string answerMsgJs = Encoding.UTF8.GetString(answerData);
+                Message answerMsg = Message.FromJson(answerMsgJs);
+                Console.WriteLine(answerMsg.ToString());
             }
         }
         finally
