@@ -35,7 +35,6 @@ internal class Server
                 }
                 catch (OperationCanceledException)
                 {
-                    // Ignore the exception when cancellation is requested.
                     break;
                 }
 
@@ -59,7 +58,7 @@ internal class Server
         finally
         {
             udpClient.Close();
-            // Дожидаемся завершения задачи по нажатию клавиши
+            
             await exitTask;
         }
     }
